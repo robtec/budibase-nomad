@@ -86,6 +86,11 @@ job "budibase" {
 
     network {
         port "proxy" { to = var.cluster_port }
+        port "redis" { to = 6379 }
+        port "couchdb" { to = 5984 }
+        port "app" { to = 4002 }
+        port "worker" { to = 4003 }
+        port "minio" { to = 9000 }
     }
 
     task "app" {
@@ -93,12 +98,13 @@ job "budibase" {
         driver = "docker"
         config {
             image = "budibase/apps"
+            ports = ["app"]
         }
         env {
             SELF_HOSTED=1
-            COUCH_DB_URL = "http://${var.couch_db_user}:${var.couch_db_pass}@couchdb:5984"
-            WORKER_URL = "http://worker:4003"
-            MINIO_URL = "http://minio:9000"
+            COUCH_DB_URL = "http://${var.couch_db_user}:${var.couch_db_pass}@${NOMAD_ADDR_couchdb}"
+            WORKER_URL = "http://${NOMAD_ADDR_worker}"
+            MINIO_URL = "http://${NOMAD_ADDR_minio}"
             MINIO_ACCESS_KEY = "${var.minio_access_key}"
             MINIO_SECRET_KEY = "${var.minio_secret_key}"
             INTERNAL_API_KEY = "${var.internal_api_key}"
@@ -108,7 +114,7 @@ job "budibase" {
             JWT_SECRET = "${var.jwt_secret}"
             LOG_LEVEL = "info"
             ENABLE_ANALYTICS = "true"
-            REDIS_URL = "redis:6379"
+            REDIS_URL = "${NOMAD_ADDR_redis}"
             REDIS_PASSWORD = "${var.redis_pass}"
             BB_ADMIN_USER_EMAIL = "${BB_ADMIN_USER_EMAIL}"
             BB_ADMIN_USER_PASSWORD = "${BB_ADMIN_USER_PASSWORD}"
@@ -122,14 +128,15 @@ job "budibase" {
         driver = "docker"
         config {
             image = "budibase/worker"
+            ports = ["worker"]
         }
         env {
             SELF_HOSTED=1
             PORT = 4003
             CLUSTER_PORT = "${var.cluster_port}"
-            COUCH_DB_URL = "http://${var.couch_db_user}:${var.couch_db_pass}@couchdb:5984"
-            WORKER_URL = "http://worker:4003"
-            MINIO_URL = "http://minio:9000"
+            COUCH_DB_URL = "http://${var.couch_db_user}:${var.couch_db_pass}@${NOMAD_ADDR_couchdb}"
+            WORKER_URL = "http://${NOMAD_ADDR_worker}"
+            MINIO_URL = "http://${NOMAD_ADDR_minio}"
             MINIO_ACCESS_KEY = "${var.minio_access_key}"
             MINIO_SECRET_KEY = "${var.minio_secret_key}"
             INTERNAL_API_KEY = "${var.internal_api_key}"
@@ -138,7 +145,7 @@ job "budibase" {
             JWT_SECRET = "${var.jwt_secret}"
             LOG_LEVEL = "info"
             ENABLE_ANALYTICS = "true"
-            REDIS_URL = "redis:6379"
+            REDIS_URL = "${NOMAD_ADDR_redis}"
             REDIS_PASSWORD = "${var.redis_pass}"
             BB_ADMIN_USER_EMAIL = "${BB_ADMIN_USER_EMAIL}"
             BB_ADMIN_USER_PASSWORD = "${BB_ADMIN_USER_PASSWORD}"
@@ -156,7 +163,8 @@ job "budibase" {
         }
         config {
             image = "minio/minio"
-            args = ["server", "/data"]
+            ports = ["minio"]
+            args = ["server", "/data", "--console-address", "\":9001\""]
 
             mount {
                 type = "volume"
@@ -182,10 +190,9 @@ job "budibase" {
             PROXY_RATE_LIMIT_WEBHOOKS_PER_SECOND = 10
             PROXY_RATE_LIMIT_API_PER_SECOND = 20
             APPS_UPSTREAM_URL = "http://app:4002"
-            WORKER_UPSTREAM_URL = "http://worker:4003"
-            MINIO_UPSTREAM_URL = "http://minio:9000"
-            COUCHDB_UPSTREAM_URL = "http://couchdb:5984"
-            WATCHTOWER_UPSTREAM_URL = "http://watchtower:8080"
+            WORKER_UPSTREAM_URL = "http://${NOMAD_ADDR_worker}"
+            MINIO_UPSTREAM_URL = "http://${NOMAD_ADDR_minio}"
+            COUCHDB_UPSTREAM_URL = "http://${NOMAD_ADDR_couchdb}"
             RESOLVER = "127.0.0.11"
         }
     }
@@ -199,6 +206,8 @@ job "budibase" {
         }
         config {
             image = "budibase/couchdb"
+
+            ports = ["couchdb"]
 
             mount {
                 type = "volume"
@@ -221,6 +230,8 @@ job "budibase" {
         }
         config {
             image = "redis"
+
+            ports = ["redis"]
 
             command = "--requirepass ${var.redis_pass}"
 

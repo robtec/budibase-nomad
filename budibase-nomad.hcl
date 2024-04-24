@@ -164,7 +164,7 @@ job "budibase" {
         config {
             image = "minio/minio"
             ports = ["minio"]
-            args = ["server", "/data", "--console-address", "\":9001\""]
+            args = ["server", "/data", "--console-address", ":9001"]
 
             mount {
                 type = "volume"

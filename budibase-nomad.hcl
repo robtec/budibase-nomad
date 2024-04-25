@@ -224,10 +224,7 @@ job "budibase" {
     task "redis" {
     
         driver = "docker"
-        lifecycle {
-            hook = "prestart"
-            sidecar = true
-        }
+        
         config {
             image = "redis"
 
